@@ -1,0 +1,87 @@
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:${WEBUI_DOCKER_TAG-main}
+    container_name: open-webui-ti-e2e
+    volumes:
+      - ./open-webui:/app/backend/data
+    ports:
+      - 3000:8080
+    environment:
+      - 'OLLAMA_BASE_URL=http://host.docker.internal:11434'
+      - 'TASK_MODEL=llama3.2:1b'
+      - ENABLE_WEBSOCKET_SUPPORT=false
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    restart: unless-stopped
+    networks:
+      - n8n-net
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    restart: always
+    ports:
+      - 5678:5678
+    labels:
+      - traefik.enable=false
+    environment:
+      - N8N_HOST=${SUBDOMAIN}.${DOMAIN_NAME}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://${SUBDOMAIN}.${DOMAIN_NAME}/
+      - GENERIC_TIMEZONE=America/Chicago
+      - N8N_ENCRYPTION_KEY=a2e5399f9a1263a9e25cfdbb9c3a6f6eb5f3779ef9ba0781198412f88928c987
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - N8N_SECURE_COOKIE=true
+      # Performance optimizations
+      - DB_SQLITE_POOL_SIZE=10
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - N8N_METRICS=true
+      - N8N_LOG_LEVEL=info
+      - N8N_DISABLE_UI=false
+      - N8N_DISABLE_PRODUCTION_MAIN_PROCESS=false
+      - N8N_PAYLOAD_SIZE_MAX=16777216
+      - N8N_METRICS_PREFIX=n8n
+      - N8N_DEFAULT_BINARY_DATA_MODE=filesystem
+      - N8N_BINARY_DATA_MAX_SIZE=16777216
+    volumes:
+      - ./n8n/database.sqlite:/home/node/.n8n/database.sqlite
+      - ./n8n:/home/node/.n8n
+      - ./local-files:/files
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks:
+      - n8n-net
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: always
+    container_name: qdrant
+    ports:
+      - 6333:6333
+      - 6334:6334
+    expose:
+      - 6333
+      - 6334
+      - 6335
+    environment:
+      - QDRANT__SERVICE__API_KEY=4471ec97c9071f536ca9849e3cad46f2
+    networks:
+      - n8n-net
+
+  backend:
+    build:
+      context: backend
+      dockerfile: Dockerfile
+    container_name: ti-e2e-backend
+    volumes:
+      - ./init_script/datasets:/datasets
+    restart: unless-stopped
+    ports:
+      - 8001:8000
+    networks:
+      - n8n-net
+    extra_hosts:
+      - host.docker.internal:host-gateway
+networks:
+  n8n-net:
+    driver: bridge

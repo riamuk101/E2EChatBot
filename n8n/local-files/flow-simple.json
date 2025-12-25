@@ -1,0 +1,367 @@
+{
+    "nodes": [
+        {
+            "parameters": {
+                "options": {}
+            },
+            "id": "b0aba49e-f8ac-4370-b8ce-4115ae506b0f",
+            "name": "When chat message received",
+            "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                -760,
+                40
+            ],
+            "webhookId": "4b3b1838-d6b3-447e-9d79-d0931eddb9f8"
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "invoke_n8n_agent_simple",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "id": "e2b1bf64-208e-4772-9f20-49f4bf762abb",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                -760,
+                240
+            ],
+            "webhookId": "4a839da9-b8a2-45f8-bcaf-c484f9a5912d"
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "75ebfdef-c8e2-4c3e-b716-1479d0cc2a73",
+                            "name": "chatInput",
+                            "value": "={{ $json?.chatInput || $json.body.chatInput }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "59b7a20f-0626-4861-93e2-015d430c266e",
+                            "name": "sessionId",
+                            "value": "={{ $json?.sessionId || $json.body.sessionId}}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "0ca42ca9-e137-4114-a6d3-6e988c979387",
+                            "name": "backend-url",
+                            "value": "http://host.docker.internal:8001",
+                            "type": "string"
+                        },
+                        {
+                            "id": "734bb587-4f52-48bf-b7a7-551ed42ccd5b",
+                            "name": "chatHistory",
+                            "value": "={{ $json.body.history }}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "9679600c-cdcf-4650-96a2-3f7cf4b0a6c5",
+            "name": "Edit Fields",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                -540,
+                140
+            ]
+        },
+        {
+            "parameters": {
+                "name": "ti_e2e_rag_database",
+                "description": "Call this tool if it's technical related. The tool will fetch the vector database given the user's prompt to fetch necessary informations, past discussion from Texas Instrument (TI) E2E Forum.",
+                "workflowId": {
+                    "__rl": true,
+                    "value": "hzM23RVit5PNgf7B",
+                    "mode": "list",
+                    "cachedResultName": "ti_e2e_rag_database"
+                },
+                "workflowInputs": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "chatInput": "={{ $('Edit Fields').item.json.chatInput }}",
+                        "backendUrl": "={{ $('Edit Fields').item.json[\"backend-url\"] }}",
+                        "sessionId": "={{ $('Edit Fields').item.json.sessionId }}"
+                    },
+                    "matchingColumns": [
+                        "chatInput"
+                    ],
+                    "schema": [
+                        {
+                            "id": "chatInput",
+                            "displayName": "chatInput",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "canBeUsedToMatch": true,
+                            "type": "string",
+                            "removed": false
+                        },
+                        {
+                            "id": "backendUrl",
+                            "displayName": "backendUrl",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "canBeUsedToMatch": true,
+                            "type": "string",
+                            "removed": false
+                        },
+                        {
+                            "id": "sessionId",
+                            "displayName": "sessionId",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "canBeUsedToMatch": true,
+                            "type": "string",
+                            "removed": false
+                        }
+                    ],
+                    "attemptToConvertTypes": false,
+                    "convertFieldsToString": false
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+            "typeVersion": 2.1,
+            "position": [
+                -20,
+                400
+            ],
+            "id": "ba8c0451-62f1-4c89-80f2-be0b98920cc2",
+            "name": "Call n8n Workflow Tool"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $('Edit Fields').item.json[\"backend-url\"] }}/n8n-webhook",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "sessionId",
+                            "value": "={{ $('Edit Fields').item.json.sessionId }}"
+                        },
+                        {
+                            "name": "status",
+                            "value": "clear"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                -200,
+                -60
+            ],
+            "id": "0a93580f-fe06-4668-98c9-eef5de804abe",
+            "name": "HTTP Request8",
+            "executeOnce": true,
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "={{ $('Edit Fields').item.json.chatInput }}",
+                "options": {
+                    "systemMessage": "=- If you don't know the answer, say so clearly. However, this doesn't mean that you would not answer universal/general knowledge (must not be technical related, the only technical related you can answer should revolve around Texas Instrument)\n- If sending code, it must be accurate and user can run it.\n- If unsure, ask the user for clarification.  \n- Respond in the same language as the user's query.  \n- If the context is unreadable or low quality, inform the user and provide the best possible answer.  \n- If the answer isn't in the context but you know it, explain this and answer using your own understanding.  \n- Only include inline citations using [source_id] (e.g., [1], [2]) when a `url` field is provided in the context. \n- Do not cite if there is no `url` field in the context. \n- Citations must be concise and directly support the information given.  \n- List all citations at the end under the heading **Citations:**  \n- Do not invent information you are unsure about—rely on the context as much as possible.  \n- Only answer questions related to **Texas Instruments** products or topics.  \n- Use the provided `url` from the context as the citation. Do not use generated or unrelated links.  \n- Provide additional resources by linking to relevant `url` fields in the context.  \n- You should use the `ti_e2e_forum` tool as much as possible if it's a technical-related question.  \n- **If no documents are relevant and the context is empty or missing, and you are confident you can offer a helpful answer (e.g., a generic \"Hello World\" example), do so to help the user get started. Clearly explain this is based on general TI knowledge.** \n- You are TI-E2E moderator, based on the context given if there was available context and it was used to resolve the issue. Answer concise, professional, right to the point, and support your answer with related links from the given context (do not hallucinate and give random incorrect links). Please include links if you used it in your answer, even if it's a discussion forum link.\n- ignore the {rag_context:true|false} as it was used to determine if additional contex were needed or not\n- your role in this module is to response to the user's question. Try to suggest a direction to the conversation and be constructive.\n- For non technical information we do not need to use tool, but if, at any minimal extent related to technical informations, you should always use the ti_e2e_rag_database. However, for normal social interaction like hello, how are you, please save resource by do not use the tool, please. Again but if it's any technical related question, please do use the tool ti_e2e_rag_database, please ti_e2e_rag_database.\n-----\nCHAT HISTORY:\n{{ $('Edit Fields').item.json.chatHistory }}"
+                }
+            },
+            "id": "d8d66bf7-47aa-46e3-8ac0-aa79cca3a6a7",
+            "name": "AI Agent2",
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "typeVersion": 1.6,
+            "position": [
+                -200,
+                120
+            ]
+        },
+        {
+            "parameters": {
+                "model": "llama-3.2-3b-preview",
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+            "typeVersion": 1,
+            "position": [
+                -260,
+                400
+            ],
+            "id": "dc8723eb-ec24-42c8-99c3-fc1af7f0a177",
+            "name": "Groq Chat Model1",
+            "credentials": {
+                "groqApi": {
+                    "id": "mFZqCC5kL0FMbCw1",
+                    "name": "Groq account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "options": {}
+            },
+            "id": "7a390cfb-5746-4bd3-a34d-090fdd6d1a59",
+            "name": "Respond to Webhook1",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                500,
+                260
+            ],
+            "executeOnce": true
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $('Edit Fields').item.json[\"backend-url\"] }}/n8n-webhook",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "sessionId",
+                            "value": "={{ $('Edit Fields').item.json.sessionId }}"
+                        },
+                        {
+                            "name": "status",
+                            "value": "done"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                420,
+                0
+            ],
+            "id": "54e324b4-b7f9-4cb4-bb5d-bf1545b717cb",
+            "name": "HTTP Request9",
+            "executeOnce": true,
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "={{ $('Edit Fields').item.json.chatInput }}",
+                "options": {
+                    "systemMessage": "=You are the answer composer tool that was connected to an agent that output the response. Your role in here is to format, change tone to fit the context.\n- You are a Texas Instrument (TI) E2E AI Response, format the response so that it is professional, formal tone, concise, and right into the point.\n- Your question should have greetings such as welcome to TI E2E Forum if it was the first message the user sent you.\n-----\nGenerated response:\n{{ $json.output }}"
+                }
+            },
+            "id": "64c0f74c-7b71-4dd7-9892-23ef697f4ca8",
+            "name": "AI Agent",
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "typeVersion": 1.6,
+            "position": [
+                160,
+                240
+            ]
+        }
+    ],
+    "connections": {
+        "When chat message received": {
+            "main": [
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Edit Fields": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP Request8",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "AI Agent2",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Call n8n Workflow Tool": {
+            "ai_tool": [
+                [
+                    {
+                        "node": "AI Agent2",
+                        "type": "ai_tool",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Agent2": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP Request9",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "AI Agent",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Groq Chat Model1": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "AI Agent2",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    },
+                    {
+                        "node": "AI Agent",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Agent": {
+            "main": [
+                [
+                    {
+                        "node": "Respond to Webhook1",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {},
+    "meta": {
+        "instanceId": "629e2f1e28578907531b366f8e6d84ed7d1a3ef1380585bfc97cab62cdc33ff9"
+    }
+}

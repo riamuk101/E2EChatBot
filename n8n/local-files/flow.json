@@ -1,0 +1,1012 @@
+{
+    "nodes": [
+        {
+            "parameters": {
+                "options": {}
+            },
+            "id": "570ddae2-d1ae-4787-b71d-50bbeb206836",
+            "name": "When chat message received",
+            "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                -2980,
+                540
+            ],
+            "webhookId": "4b3b1838-d6b3-447e-9d79-d0931eddb9f8"
+        },
+        {
+            "parameters": {
+                "options": {}
+            },
+            "id": "ae303c34-5e7c-40a4-a54e-bed4b30491c3",
+            "name": "Respond to Webhook",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                1160,
+                1040
+            ],
+            "executeOnce": true
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "invoke_n8n_agent",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "id": "4a128424-71cd-4a34-bbd1-9895cf287632",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                -2980,
+                740
+            ],
+            "webhookId": "4a839da9-b8a2-45f8-bcaf-c484f9a5912d"
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "={{ $('Edit Fields').item.json.chatInput }}",
+                "options": {
+                    "systemMessage": "=- If you don't know the answer, say so clearly. However, this doesn't mean that you would not answer universal/general knowledge (must not be technical related, the only technical related you can answer should revolve around Texas Instrument)\n- If sending code, it must be accurate and user can run it.\n- If unsure, ask the user for clarification.  \n- Respond in the same language as the user's query.  \n- If the context is unreadable or low quality, inform the user and provide the best possible answer.  \n- If the answer isn't in the context but you know it, explain this and answer using your own understanding.  \n- Only include inline citations using [source_id] (e.g., [1], [2]) when a `url` field is provided in the context. \n- Do not cite if there is no `url` field in the context. \n- Citations must be concise and directly support the information given.  \n- List all citations at the end under the heading **Citations:**  \n- Do not invent information you are unsure about—rely on the context as much as possible.  \n- Only answer questions related to **Texas Instruments** products or topics.  \n- Use the provided `url` from the context as the citation. Do not use generated or unrelated links.  \n- Provide additional resources by linking to relevant `url` fields in the context.  \n- You should use the `ti_e2e_forum` tool as much as possible if it's a technical-related question.  \n- **If no documents are relevant and the context is empty or missing, and you are confident you can offer a helpful answer (e.g., a generic \"Hello World\" example), do so to help the user get started. Clearly explain this is based on general TI knowledge.** \n- You are TI-E2E moderator, based on the context given if there was available context and it was used to resolve the issue. Answer concise, professional, right to the point, and support your answer with related links from the given context (do not hallucinate and give random incorrect links). Please include links if you used it in your answer, even if it's a discussion forum link.\n- ignore the {rag_context:true|false} as it was used to determine if additional contex were needed or not\n- your role in this module is to response to the user's question. Try to suggest a direction to the conversation and be constructive.\n-----\nRelated documents (if applicable):\n{{ $json.contextContent }}\n-----\nScraped page content (if applicable):\n{{ $json.scrapedPageContent }}\n-----\nContext above are just for references, please ignore if not relevant."
+                }
+            },
+            "id": "4d63a937-3c03-4e97-838c-3b5f2c8ad254",
+            "name": "AI Agent",
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "typeVersion": 1.6,
+            "position": [
+                760,
+                920
+            ]
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "75ebfdef-c8e2-4c3e-b716-1479d0cc2a73",
+                            "name": "chatInput",
+                            "value": "={{ $json?.chatInput || $json.body.chatInput }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "59b7a20f-0626-4861-93e2-015d430c266e",
+                            "name": "sessionId",
+                            "value": "={{ $json?.sessionId || $json.body.sessionId}}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "0ca42ca9-e137-4114-a6d3-6e988c979387",
+                            "name": "backend-url",
+                            "value": "http://host.docker.internal:8001",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "182d803d-f07d-45fa-ae25-ed3377117140",
+            "name": "Edit Fields",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                -2760,
+                640
+            ]
+        },
+        {
+            "parameters": {
+                "sessionIdType": "customKey",
+                "sessionKey": "={{ $('Edit Fields').item.json.sessionId }}",
+                "contextWindowLength": 1
+            },
+            "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+            "typeVersion": 1.3,
+            "position": [
+                920,
+                1160
+            ],
+            "id": "31c2c565-11b1-45e0-a1ef-1c5867c12690",
+            "name": "Simple Memory"
+        },
+        {
+            "parameters": {
+                "fieldsToAggregate": {
+                    "fieldToAggregate": [
+                        {
+                            "fieldToAggregate": "document.pageContent",
+                            "renameField": true,
+                            "outputFieldName": "contextContent"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.aggregate",
+            "typeVersion": 1,
+            "position": [
+                -340,
+                260
+            ],
+            "id": "de2a37ee-f2e8-4ae9-9b43-13cee09c8686",
+            "name": "Aggregate"
+        },
+        {
+            "parameters": {
+                "jsCode": "const inputData = $input.all();\n\nfunction splitConcatenatedUrls(text) {\n  const parts = [];\n  let i = 0;\n  while (i < text.length) {\n    const start = text.indexOf(\"http\", i);\n    if (start === -1) break;\n    const next = text.indexOf(\"http\", start + 4); // Look ahead for next http\n    if (next !== -1) {\n      parts.push(text.slice(start, next));\n      i = next;\n    } else {\n      parts.push(text.slice(start));\n      break;\n    }\n  }\n  return parts;\n}\n\nreturn inputData.map(item => {\n  const contentArray = item.json.contextContent || [];\n  const combined = contentArray.join(\" \");\n  const extractedUrls = splitConcatenatedUrls(combined.trim());\n\n  item.json.extractedUrls = extractedUrls;\n  return item;\n});"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -60,
+                340
+            ],
+            "id": "1190fd43-7b29-4f28-b2cc-38d9bd45620d",
+            "name": "Extract url"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $('Edit Fields').item.json[\"backend-url\"] }}/scrape",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "input_data",
+                            "value": "={{ $json.text }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                280,
+                320
+            ],
+            "id": "a5560203-ec73-420f-a39b-9fac6d1d2bc7",
+            "name": "HTTP Request1",
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "sessionIdType": "customKey",
+                "sessionKey": "={{ $('Edit Fields').item.json.sessionId }}",
+                "contextWindowLength": 1
+            },
+            "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+            "typeVersion": 1.3,
+            "position": [
+                -2460,
+                480
+            ],
+            "id": "f7e38ce9-df3f-47d6-88a4-1c494f58c0c1",
+            "name": "Simple Memory1"
+        },
+        {
+            "parameters": {
+                "jsCode": "for (const item of $input.all()) {\n  if ($runIndex >= 3) {\n    item.json.retry = false;\n    item.json.rag_contex = false;\n  } else {\n    try {\n      let rawOutput = item.json.output.trim();\n      rawOutput = rawOutput.replace(/```json|```|\\n/g, '').trim();\n  \n      const parsedData = JSON.parse(rawOutput);\n      item.json.rag_context = parsedData.rag_context;\n      item.json.retry = false;\n    } catch (error) {\n      item.json.retry = true;\n    }\n  }\n}\n\nreturn $input.all();"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -1620,
+                660
+            ],
+            "id": "461416ae-fc2d-461f-9e6a-dc2184971589",
+            "name": "Extract rag_context",
+            "retryOnFail": false
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 2
+                    },
+                    "conditions": [
+                        {
+                            "id": "5eb04a11-f560-4d98-b2b5-5fc599962e26",
+                            "leftValue": "={{ $json.rag_context }}",
+                            "rightValue": "true",
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "true",
+                                "singleValue": true
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                -1360,
+                820
+            ],
+            "id": "f9202b36-720c-40bc-a08c-b10782258a8f",
+            "name": "If"
+        },
+        {
+            "parameters": {
+                "model": "nomic-embed-text:latest"
+            },
+            "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+            "typeVersion": 1,
+            "position": [
+                -700,
+                600
+            ],
+            "id": "c90f0753-ed26-4257-97ea-5931063f37a4",
+            "name": "Embeddings Ollama",
+            "credentials": {
+                "ollamaApi": {
+                    "id": "cl2JLFB580JEHvMM",
+                    "name": "Ollama account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "model": "llama3.2:1b",
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+            "typeVersion": 1,
+            "position": [
+                -280,
+                580
+            ],
+            "id": "52c2c758-0e0a-477a-8985-d2a99f90346c",
+            "name": "Ollama Chat Model2",
+            "credentials": {
+                "ollamaApi": {
+                    "id": "cl2JLFB580JEHvMM",
+                    "name": "Ollama account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $('Edit Fields').item.json[\"backend-url\"] }}/n8n-webhook",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "sessionId",
+                            "value": "={{ $('Edit Fields').item.json.sessionId }}"
+                        },
+                        {
+                            "name": "status",
+                            "value": "Extracting documents from RAG"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                -740,
+                200
+            ],
+            "id": "ac8c50a5-68c4-46a4-9d24-b61a68099e09",
+            "name": "HTTP Request2",
+            "executeOnce": true,
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $('Edit Fields').item.json[\"backend-url\"] }}/n8n-webhook",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "sessionId",
+                            "value": "={{ $('Edit Fields').item.json.sessionId }}"
+                        },
+                        {
+                            "name": "status",
+                            "value": "Extracting relevant url(s)"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                -120,
+                40
+            ],
+            "id": "d165380b-86d2-4873-8fa1-65965bddf878",
+            "name": "HTTP Request3",
+            "executeOnce": true,
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $('Edit Fields').item.json[\"backend-url\"] }}/n8n-webhook",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "sessionId",
+                            "value": "={{ $('Edit Fields').item.json.sessionId }}"
+                        },
+                        {
+                            "name": "status",
+                            "value": "Generating response"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                500,
+                280
+            ],
+            "id": "33ffc58e-89c9-4a32-a4ac-dedea53fd67f",
+            "name": "HTTP Request4",
+            "executeOnce": true,
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $('Edit Fields').item.json[\"backend-url\"] }}/n8n-webhook",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "sessionId",
+                            "value": "={{ $('Edit Fields').item.json.sessionId }}"
+                        },
+                        {
+                            "name": "status",
+                            "value": "Generating response"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                580,
+                1260
+            ],
+            "id": "95c4c969-c980-4dbe-984c-fe3637c22228",
+            "name": "HTTP Request7",
+            "executeOnce": true,
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 2
+                    },
+                    "conditions": [
+                        {
+                            "id": "3a126369-5ed1-4209-bdb8-82e79b3a27ab",
+                            "leftValue": "={{ $json.retry }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "false",
+                                "singleValue": true
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                -1620,
+                920
+            ],
+            "id": "1978dc1c-aec5-4c7d-b156-31a8f037f660",
+            "name": "If1"
+        },
+        {
+            "parameters": {
+                "model": "llama3.2:1b",
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+            "typeVersion": 1,
+            "position": [
+                -2040,
+                940
+            ],
+            "id": "5dcd76bf-79ef-433c-93bb-39743d4f6a94",
+            "name": "Ollama Chat Model1",
+            "credentials": {
+                "ollamaApi": {
+                    "id": "cl2JLFB580JEHvMM",
+                    "name": "Ollama account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $('Edit Fields').item.json[\"backend-url\"] }}/n8n-webhook",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "sessionId",
+                            "value": "={{ $('Edit Fields').item.json.sessionId }}"
+                        },
+                        {
+                            "name": "status",
+                            "value": "done"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1160,
+                840
+            ],
+            "id": "510e414d-175a-4fd2-9008-2df22c936f0d",
+            "name": "HTTP Request6",
+            "executeOnce": true,
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.memoryManager",
+            "typeVersion": 1.1,
+            "position": [
+                -2500,
+                680
+            ],
+            "id": "f9220155-0c98-4db8-a3e7-0f12a48e2d85",
+            "name": "Chat Memory Manager"
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "={{ $('Edit Fields').item.json.chatInput }}",
+                "hasOutputParser": true,
+                "messages": {
+                    "messageValues": [
+                        {
+                            "message": "You are a context decider module. Based on the user message, you will decide if it is necessary to fetch additional context from the database (Whether it's a follow up question or current context from the chat history are necessary to answer the question without needing additional resources). If you think it's a new question, please set rag_contex to true in order to fetch any technical informations from the vector database. Answer in plain json text, do not explain as you are not a helper. your answer should only be. I repeat, do not be distract from the Human question, you are not a helper.  ```json {\"rag_context\": true|false} ``` **I REPEAT, YOUR ONLY RESPONSE IS {\"rag_context\": true|false} AND YOU ARE NOT A HELPER** ----- - DO NOT ANSWER THE QUESTION, YOUR TASK IS TO DECIDE IF MORE DATA IS NEEDED BY RETURNING: {\"rag_context\": true|false} - Be considerate as you should not set it to true if it's a casual message"
+                        }
+                    ]
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.chainLlm",
+            "typeVersion": 1.6,
+            "position": [
+                -2060,
+                680
+            ],
+            "id": "f948f49d-c954-42f4-ac8a-3ad03b4f1ca6",
+            "name": "Context decider chain"
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "=Parse the url",
+                "hasOutputParser": true,
+                "messages": {
+                    "messageValues": [
+                        {
+                            "message": "{{ $json.contextContent }}\n\n-----\n\nYou are a context-getter module, given the links above, clean them up and provide the new links in the following json format. You will provide a plain json, do not start your response with ```json or ```, start with a json { and ends with }.\n\n{\n\"links\": [\"<link\", ...]\n}"
+                        }
+                    ]
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.chainLlm",
+            "typeVersion": 1.6,
+            "position": [
+                -60,
+                580
+            ],
+            "id": "34b0950e-3e28-47b6-bd28-f968e9f66fb4",
+            "name": "URL Parser Chain"
+        },
+        {
+            "parameters": {
+                "mode": "delete",
+                "deleteMode": "all"
+            },
+            "type": "@n8n/n8n-nodes-langchain.memoryManager",
+            "typeVersion": 1.1,
+            "position": [
+                -1140,
+                300
+            ],
+            "id": "b2ee96cd-ca92-4cb8-b1ef-3c745b3a5a89",
+            "name": "Chat Memory Manager1"
+        },
+        {
+            "parameters": {
+                "sessionIdType": "customKey",
+                "sessionKey": "={{ $('Edit Fields').item.json.sessionId }}"
+            },
+            "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+            "typeVersion": 1.3,
+            "position": [
+                -1080,
+                600
+            ],
+            "id": "3be437ff-3ff7-44b6-aa9d-1008b3296bcb",
+            "name": "Simple Memory2"
+        },
+        {
+            "parameters": {
+                "jsCode": "const inputItems = $input.all();\nreturn inputItems.slice(0, 5);"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -2420,
+                940
+            ],
+            "id": "bbfebac2-b9b4-4324-b917-7daef68a06ed",
+            "name": "Code1"
+        },
+        {
+            "parameters": {
+                "model": "llama-3.2-3b-preview",
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+            "typeVersion": 1,
+            "position": [
+                800,
+                1160
+            ],
+            "id": "9de6ce20-5952-4988-a395-10b952c96ec7",
+            "name": "Groq Chat Model",
+            "credentials": {
+                "groqApi": {
+                    "id": "mFZqCC5kL0FMbCw1",
+                    "name": "Groq account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "8a50a53a-aa10-4308-9c5c-99db9cffc438",
+                            "name": "contextContent",
+                            "value": "={{ $('Aggregate').item.json.contextContent }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "2967a3fc-3d60-49eb-814c-d8d35f8ad84b",
+                            "name": "scrapedContent",
+                            "value": "={{ $json.data }}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                520,
+                580
+            ],
+            "id": "2bfff096-8201-41e5-b4fc-5e09dace1830",
+            "name": "Edit Fields1"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $('Edit Fields').item.json[\"backend-url\"] }}/n8n-webhook",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "sessionId",
+                            "value": "={{ $('Edit Fields2').item.json.sessionId }}"
+                        },
+                        {
+                            "name": "status",
+                            "value": "clear"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                -2480,
+                240
+            ],
+            "id": "fc803653-513f-4fa1-bc16-de8df8c83b36",
+            "name": "HTTP Request8",
+            "executeOnce": true,
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "mode": "load",
+                "qdrantCollection": {
+                    "__rl": true,
+                    "value": "questions-collection-combined",
+                    "mode": "list",
+                    "cachedResultName": "questions-collection-combined"
+                },
+                "prompt": "={{ $('Edit Fields').item.json.chatInput }}",
+                "options": {}
+            },
+            "id": "918b010c-0d6e-49a8-92a4-e79543f80b69",
+            "name": "questions-collection-combined",
+            "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+            "typeVersion": 1,
+            "position": [
+                -760,
+                420
+            ],
+            "credentials": {
+                "qdrantApi": {
+                    "id": "EA2QCuNpb8Oq9nsh",
+                    "name": "QdrantApi account"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "When chat message received": {
+            "main": [
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Agent": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP Request6",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Respond to Webhook",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Edit Fields": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP Request8",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Chat Memory Manager",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Simple Memory": {
+            "ai_memory": [
+                [
+                    {
+                        "node": "AI Agent",
+                        "type": "ai_memory",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Aggregate": {
+            "main": [
+                [
+                    {
+                        "node": "Extract url",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "HTTP Request3",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Extract url": {
+            "main": [
+                [
+                    {
+                        "node": "URL Parser Chain",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "HTTP Request1": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP Request4",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Edit Fields1",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Simple Memory1": {
+            "ai_memory": [
+                [
+                    {
+                        "node": "Chat Memory Manager",
+                        "type": "ai_memory",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Extract rag_context": {
+            "main": [
+                [
+                    {
+                        "node": "If1",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "If": {
+            "main": [
+                [
+                    {
+                        "node": "Chat Memory Manager1",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "HTTP Request7",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Embeddings Ollama": {
+            "ai_embedding": [
+                [
+                    {
+                        "node": "questions-collection-combined",
+                        "type": "ai_embedding",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Ollama Chat Model2": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "URL Parser Chain",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "HTTP Request7": {
+            "main": [
+                [
+                    {
+                        "node": "AI Agent",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "If1": {
+            "main": [
+                [
+                    {
+                        "node": "If",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Chat Memory Manager",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Ollama Chat Model1": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "Context decider chain",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "HTTP Request6": {
+            "main": [
+                []
+            ]
+        },
+        "Chat Memory Manager": {
+            "main": [
+                [
+                    {
+                        "node": "Code1",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Context decider chain": {
+            "main": [
+                [
+                    {
+                        "node": "Extract rag_context",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "URL Parser Chain": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP Request1",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Chat Memory Manager1": {
+            "main": [
+                [
+                    {
+                        "node": "questions-collection-combined",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "HTTP Request2",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Simple Memory2": {
+            "ai_memory": [
+                [
+                    {
+                        "node": "Chat Memory Manager1",
+                        "type": "ai_memory",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Code1": {
+            "main": [
+                [
+                    {
+                        "node": "Context decider chain",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Groq Chat Model": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "AI Agent",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Edit Fields1": {
+            "main": [
+                [
+                    {
+                        "node": "AI Agent",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "questions-collection-combined": {
+            "main": [
+                [
+                    {
+                        "node": "Aggregate",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {},
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "629e2f1e28578907531b366f8e6d84ed7d1a3ef1380585bfc97cab62cdc33ff9"
+    }
+}

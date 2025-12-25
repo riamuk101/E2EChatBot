@@ -1,0 +1,365 @@
+{
+    "nodes": [
+        {
+            "parameters": {
+                "fieldsToAggregate": {
+                    "fieldToAggregate": [
+                        {
+                            "fieldToAggregate": "document.pageContent",
+                            "renameField": true,
+                            "outputFieldName": "contextContent"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.aggregate",
+            "typeVersion": 1,
+            "position": [
+                296,
+                -140
+            ],
+            "id": "81b69071-769e-4d51-8a73-cfa89f7fe3b7",
+            "name": "Aggregate"
+        },
+        {
+            "parameters": {
+                "jsCode": "const inputData = $input.all();\n\nfunction splitConcatenatedUrls(text) {\n  const parts = [];\n  let i = 0;\n  while (i < text.length) {\n    const start = text.indexOf(\"http\", i);\n    if (start === -1) break;\n    const next = text.indexOf(\"http\", start + 4); // Look ahead for next http\n    if (next !== -1) {\n      parts.push(text.slice(start, next));\n      i = next;\n    } else {\n      parts.push(text.slice(start));\n      break;\n    }\n  }\n  return parts;\n}\n\nreturn inputData.map(item => {\n  const contentArray = item.json.contextContent || [];\n  const combined = contentArray.join(\" \");\n  const extractedUrls = splitConcatenatedUrls(combined.trim());\n\n  item.json.extractedUrls = extractedUrls;\n  return item;\n});"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                516,
+                -40
+            ],
+            "id": "8dfb13c1-e063-4106-8bb7-2523b7351a7c",
+            "name": "Extract url"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $('When Executed by Another Workflow').item.json.backendUrl }}/scrape",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "input_data",
+                            "value": "={{ $json.text }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1112,
+                -40
+            ],
+            "id": "ad38b282-9b33-455a-a9bd-7070e5d84d97",
+            "name": "HTTP Request1",
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "model": "llama3.2:1b",
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+            "typeVersion": 1,
+            "position": [
+                824,
+                180
+            ],
+            "id": "1e087120-3e45-49f5-9855-82e4c760a961",
+            "name": "Ollama Chat Model2",
+            "credentials": {
+                "ollamaApi": {
+                    "id": "cl2JLFB580JEHvMM",
+                    "name": "Ollama account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $('When Executed by Another Workflow').item.json.backendUrl }}/n8n-webhook",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "sessionId",
+                            "value": "={{ $('When Executed by Another Workflow').item.json.sessionId }}"
+                        },
+                        {
+                            "name": "status",
+                            "value": "Extracting relevant url(s)"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                516,
+                -240
+            ],
+            "id": "98ee9402-dc8d-42e1-985f-177d24d3aa3a",
+            "name": "HTTP Request3",
+            "executeOnce": true,
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $('When Executed by Another Workflow').item.json.backendUrl }}/n8n-webhook",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "sessionId",
+                            "value": "={{ $('When Executed by Another Workflow').item.json.sessionId }}"
+                        },
+                        {
+                            "name": "status",
+                            "value": "Generating response"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1332,
+                -140
+            ],
+            "id": "8fb40724-4b46-4e85-92a2-a3e6218ad59b",
+            "name": "HTTP Request4",
+            "executeOnce": true,
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "=Parse the url",
+                "hasOutputParser": true,
+                "messages": {
+                    "messageValues": [
+                        {
+                            "message": "{{ $json.contextContent }}\n\n-----\n\nYou are a context-getter module, given the links above, clean them up and provide the new links in the following json format. You will provide a plain json, do not start your response with ```json or ```, start with a json { and ends with }.\n\n{\n\"links\": [\"<link\", ...]\n}"
+                        }
+                    ]
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.chainLlm",
+            "typeVersion": 1.6,
+            "position": [
+                736,
+                -40
+            ],
+            "id": "a2d26b04-5d31-4e90-9fc1-a951a38fe576",
+            "name": "URL Parser Chain"
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "8a50a53a-aa10-4308-9c5c-99db9cffc438",
+                            "name": "contextContent",
+                            "value": "={{ $('Aggregate').item.json.contextContent }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "2967a3fc-3d60-49eb-814c-d8d35f8ad84b",
+                            "name": "scrapedContent",
+                            "value": "={{ $json.data }}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                1332,
+                60
+            ],
+            "id": "b64a41df-ed94-4b1a-ad5b-6c58581224d3",
+            "name": "Edit Fields1"
+        },
+        {
+            "parameters": {
+                "inputSource": "jsonExample",
+                "jsonExample": "{\n  \"chatInput\": \"Human prompt here\",\n  \"backendUrl\": \"localhost:8001\",\n  \"sessionId\": \"123\"\n}"
+            },
+            "id": "8de4e235-858e-494a-8077-f36a11577a08",
+            "name": "When Executed by Another Workflow",
+            "type": "n8n-nodes-base.executeWorkflowTrigger",
+            "position": [
+                -300,
+                -140
+            ],
+            "typeVersion": 1.1
+        },
+        {
+            "parameters": {
+                "mode": "load",
+                "qdrantCollection": {
+                    "__rl": true,
+                    "value": "questions-collection-combined",
+                    "mode": "list",
+                    "cachedResultName": "questions-collection-combined"
+                },
+                "prompt": "={{ $('When Executed by Another Workflow').item.json.chatInput }}",
+                "options": {}
+            },
+            "id": "d3bca28b-8100-427c-98a0-933e3ffcc204",
+            "name": "questions_combined",
+            "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+            "typeVersion": 1,
+            "position": [
+                -80,
+                -140
+            ],
+            "credentials": {
+                "qdrantApi": {
+                    "id": "EA2QCuNpb8Oq9nsh",
+                    "name": "QdrantApi account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "model": "nomic-embed-text:latest"
+            },
+            "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+            "typeVersion": 1,
+            "position": [
+                -40,
+                80
+            ],
+            "id": "60ab0611-387a-4042-b973-95771651994c",
+            "name": "Embeddings Ollama",
+            "credentials": {
+                "ollamaApi": {
+                    "id": "cl2JLFB580JEHvMM",
+                    "name": "Ollama account"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Aggregate": {
+            "main": [
+                [
+                    {
+                        "node": "Extract url",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "HTTP Request3",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Extract url": {
+            "main": [
+                [
+                    {
+                        "node": "URL Parser Chain",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "HTTP Request1": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP Request4",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Edit Fields1",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Ollama Chat Model2": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "URL Parser Chain",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "URL Parser Chain": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP Request1",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Edit Fields1": {
+            "main": [
+                []
+            ]
+        },
+        "When Executed by Another Workflow": {
+            "main": [
+                [
+                    {
+                        "node": "questions_combined",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "questions_combined": {
+            "main": [
+                [
+                    {
+                        "node": "Aggregate",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Embeddings Ollama": {
+            "ai_embedding": [
+                [
+                    {
+                        "node": "questions_combined",
+                        "type": "ai_embedding",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {},
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "629e2f1e28578907531b366f8e6d84ed7d1a3ef1380585bfc97cab62cdc33ff9"
+    }
+}

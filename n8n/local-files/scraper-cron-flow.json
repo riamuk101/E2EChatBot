@@ -1,0 +1,115 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "15cdf43b-05cb-4be7-abdd-165a35b0cdcc",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "command": "ssh-keygen -R ti-e2e"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ],
+      "id": "705ff123-402d-43ae-b73c-019709575c6a",
+      "name": "Execute Command"
+    },
+    {
+      "parameters": {
+        "command": "export HOST=http://host.docker.internal && python3 /app/scripts/TI-E2E-indexing.py"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        660,
+        0
+      ],
+      "id": "87d69969-fa2d-49d6-8a6e-de8f2aee7079",
+      "name": "SSH1",
+      "credentials": {
+        "sshPassword": {
+          "id": "rsYgwlmk4JeIROjT",
+          "name": "SSH Password account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "command": "python3 /app/scripts/TI-E2E-scraper.py"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        440,
+        0
+      ],
+      "id": "28ed1139-29d8-45dc-8de4-6dfd5c897b3a",
+      "name": "Run scraper",
+      "credentials": {
+        "sshPassword": {
+          "id": "rsYgwlmk4JeIROjT",
+          "name": "SSH Password account"
+        }
+      },
+      "notes": "python3 /app/scripts/TI-E2E-scraper.py\ndebug: python3 /app/scripts/TI-E2E-scraper.py --overwriteLastPage 3"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command": {
+      "main": [
+        [
+          {
+            "node": "Run scraper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run scraper": {
+      "main": [
+        [
+          {
+            "node": "SSH1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "629e2f1e28578907531b366f8e6d84ed7d1a3ef1380585bfc97cab62cdc33ff9"
+  }
+}

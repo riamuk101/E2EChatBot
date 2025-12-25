@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+aiohttp
+beautifulsoup4
+playwright
+qdrant-client
+ollama
+tqdm
+requests
+lxml
+websockets
+ollama
